@@ -6,15 +6,15 @@ KiCadのシンボルおよびフットプリントライブラリをGitリポジ
 タブによる機能切り替え:
 GUI上部のタブで「Git Repositories Sync」と「Local Libraries Import」を切り替えて操作。
 
-【Git Repositories Sync（Git連携機能）】
+【Git Repositories Sync（Git連携機能）】  
 GUIベースの管理: KiCadのPCBエディタ上から、ダイアログでGitリポジトリ（URLとローカル保存先）の登録・更新・削除が可能。
 Git同期: 登録された全リポジトリに対し、ローカルに存在しなければ git clone、存在すれば git pull を自動で判別して一括実行。
 [S] Sync Target: 同期対象とするリポジトリをリストのチェックボックスで個別にオン/オフ可能。
 
-【Local Libraries Import（ローカルライブラリ取り込み機能）】
+【Local Libraries Import（ローカルライブラリ取り込み機能）】  
 手軽なローカル管理: SamacSysやUltraLibrarianなどから取得したシンボル（.kicad_sym）やフットプリントフォルダ（.pretty）のパスを登録。
 
-【プロジェクト・ローカル管理への登録（共通）】
+【プロジェクト・ローカル管理への登録（共通）】  
 [C] Copy: 同期・指定したライブラリを、現在開いているKiCadプロジェクト内の local_git_libs/ または local_imported_libs/ フォルダへ自動コピー（Git連携時は容量削減のため .git 履歴データは除外）。
 [R] Register: コピーされたライブラリをスキャンし、プロジェクト固有のライブラリテーブル（sym-lib-table, fp-lib-table）へ環境変数 ${KIPRJMOD} を用いた相対パスで自動登録。
 
@@ -43,7 +43,9 @@ plugins/
 KiCadから: PCBエディタのツールバーアイコン、または上部メニュー「ツール」>「外部プラグイン」>「KiCad Library Unified Manager」をクリックする。
 
 スタンドアロン起動: コマンドプロンプトやターミナルから以下を実行する。
+```
 python git_sync_gui.py
+```
 
 ### 2. Gitリポジトリの登録と同期 (Git Repositories Sync タブ)
 1. 画面下部の Git URL に対象のURLを入力（例: https://github.com/.../kicad-libs.git）、Local Dir にPC上での保存先ディレクトリを指定する。
@@ -65,7 +67,8 @@ python git_sync_gui.py
 内容を書き換えて 「Update Selected...」 を押すと、情報が上書きされる。
 不要な場合は 「Remove Selected」 でリストから削除できる（PC上の実ファイルは削除されない）。
 
-> 重要: 自動登録機能が実行された後は、KiCadが古いライブラリ情報をメモリに保持している可能性があるため、設定を確実に反映させるために回路図エディタ・PCBエディタを一度開き直してください。
+>[!NOTE]
+>重要: 自動登録機能が実行された後は、KiCadが古いライブラリ情報をメモリに保持している可能性があるため、設定を確実に反映させるために回路図エディタ・PCBエディタを一度開き直してください。
 
 ## トラブルシューティング
 ### プラグインのアイコンが表示されない
