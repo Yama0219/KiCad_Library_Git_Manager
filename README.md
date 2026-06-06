@@ -26,9 +26,11 @@ Git同期: 登録された全リポジトリに対し、ローカルに存在し
 ### 導入手順
 本ツールのフォルダ（例: git_lib_sync/）を、KiCadのグローバルプラグインディレクトリに配置する。
 
-Windows: %USERPROFILE%\Documents\KiCad\{version}\scripting\plugins
-macOS: ~/Library/Preferences/kicad/{version}/scripting/plugins
-Linux: ~/.local/share/kicad/{version}/scripting/plugins
+| OS | Directory |
+|----|----|
+| Windows | %USERPROFILE%\Documents\KiCad\{version}\scripting\plugins |  
+| macOS | ~/Library/Preferences/kicad/{version}/scripting/plugins |  
+| Linux | ~/.local/share/kicad/{version}/scripting/plugins |  
 
 フォルダの構成が以下のようになっていることを確認する。
 
