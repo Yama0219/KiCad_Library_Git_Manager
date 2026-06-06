@@ -6,9 +6,7 @@ import shutil
 
 # --- パスの動的取得と設定ファイルの位置 ---
 PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
-# JSONはユーザーのホームディレクトリに保存（安全性のため元に戻しました）
 CONFIG_FILE = os.path.expanduser("~/.kicad_lib_sync.json")
-# アイコンはプラグインフォルダ内を参照
 ICON_FILE = os.path.join(PLUGIN_DIR, "icon.png")
 
 def load_config():
@@ -64,7 +62,7 @@ def register_to_project_table(table_path, lib_name, rel_lib_uri, is_fp=False):
 
 class GitLibSyncDialog(wx.Dialog):
     def __init__(self, parent):
-        super().__init__(parent, title="Git Library Sync Manager", size=(700, 500), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+        super().__init__(parent, title="Git Library Sync Manager", size=(750, 500), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         
         if os.path.exists(ICON_FILE):
             icon = wx.Icon(ICON_FILE, wx.BITMAP_TYPE_ANY)
@@ -74,11 +72,14 @@ class GitLibSyncDialog(wx.Dialog):
 
         main_sizer = wx.BoxSizer(wx.VERTICAL)
 
-        list_label = wx.StaticText(self, label="Registered Repositories  ([C]:Copy to Proj, [R]:Auto-Register):")
+        # 表示ラベルを更新（チェックボックスがSyncであることを明示）
+        list_label = wx.StaticText(self, label="Registered Repositories  (☑: Sync Target, [C]:Copy to Proj, [R]:Auto-Register):")
         main_sizer.Add(list_label, 0, wx.ALL, 5)
 
-        self.repo_listbox = wx.ListBox(self, style=wx.LB_SINGLE)
+        # --- UI改良：各行にチェックボックスを持つ CheckListBox を使用 ---
+        self.repo_listbox = wx.CheckListBox(self, style=wx.LB_SINGLE)
         self.repo_listbox.Bind(wx.EVT_LISTBOX, self.on_list_select)
+        self.repo_listbox.Bind(wx.EVT_CHECKLISTBOX, self.on_list_check) # リスト上のチェック操作を検知
         main_sizer.Add(self.repo_listbox, 1, wx.EXPAND | wx.ALL, 5)
 
         input_sizer = wx.FlexGridSizer(rows=2, cols=2, vgap=5, hgap=5)
@@ -99,16 +100,21 @@ class GitLibSyncDialog(wx.Dialog):
         input_sizer.Add(dir_sizer, 1, wx.EXPAND)
         main_sizer.Add(input_sizer, 0, wx.EXPAND | wx.ALL, 5)
 
+        # 下部のSチェックボックスを削除し、CとRのみ残す
         opt_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.chk_copy = wx.CheckBox(self, label="Copy to current project folder")
-        self.chk_reg = wx.CheckBox(self, label="Register to project library table")
+        self.chk_copy = wx.CheckBox(self, label="Copy to project [C]")
+        self.chk_reg = wx.CheckBox(self, label="Register to table [R]")
+        
+        self.chk_copy.Bind(wx.EVT_CHECKBOX, self.on_checkbox_toggle)
+        self.chk_reg.Bind(wx.EVT_CHECKBOX, self.on_checkbox_toggle)
+        
         opt_sizer.Add(self.chk_copy, 0, wx.RIGHT, 15)
         opt_sizer.Add(self.chk_reg, 0)
         main_sizer.Add(opt_sizer, 0, wx.ALL, 5)
 
         manage_btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.add_btn = wx.Button(self, label="Add New")
-        self.update_btn = wx.Button(self, label="Update Selected")
+        self.update_btn = wx.Button(self, label="Update Selected URL/Dir")
         self.remove_btn = wx.Button(self, label="Remove Selected")
         
         self.add_btn.Bind(wx.EVT_BUTTON, self.on_add)
@@ -123,7 +129,7 @@ class GitLibSyncDialog(wx.Dialog):
         main_sizer.Add(wx.StaticLine(self), 0, wx.EXPAND | wx.ALL, 5)
 
         action_btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.sync_btn = wx.Button(self, label="Sync All Selected Operations")
+        self.sync_btn = wx.Button(self, label="Sync All Checked Operations")
         self.close_btn = wx.Button(self, label="Close")
         self.sync_btn.Bind(wx.EVT_BUTTON, self.on_sync)
         self.close_btn.Bind(wx.EVT_BUTTON, self.on_close)
@@ -137,11 +143,13 @@ class GitLibSyncDialog(wx.Dialog):
 
     def refresh_list(self):
         self.repo_listbox.Clear()
-        for repo in self.config.get("repositories", []):
+        for i, repo in enumerate(self.config.get("repositories", [])):
             c_mark = "C" if repo.get("copy", False) else " "
             r_mark = "R" if repo.get("reg", False) else " "
             display_str = f"[{c_mark}][{r_mark}]  {repo['url']}  ->  {repo['dir']}"
             self.repo_listbox.Append(display_str)
+            # リストのチェックボックス状態（Sync）を反映
+            self.repo_listbox.Check(i, repo.get("sync", True))
 
     def on_list_select(self, event):
         selection = self.repo_listbox.GetSelection()
@@ -151,6 +159,31 @@ class GitLibSyncDialog(wx.Dialog):
             self.dir_input.SetValue(repo.get("dir", ""))
             self.chk_copy.SetValue(repo.get("copy", False))
             self.chk_reg.SetValue(repo.get("reg", False))
+
+    # --- 新規関数：リスト上のチェックボックスが押されたときに自動保存 ---
+    def on_list_check(self, event):
+        index = event.GetInt()
+        repos = self.config.get("repositories", [])
+        if 0 <= index < len(repos):
+            # CheckListBox のチェック状態を JSON に保存
+            repos[index]["sync"] = self.repo_listbox.IsChecked(index)
+            try:
+                save_config(self.config)
+            except Exception:
+                pass
+
+    def on_checkbox_toggle(self, event):
+        selection = self.repo_listbox.GetSelection()
+        if selection != wx.NOT_FOUND:
+            repos = self.config.get("repositories", [])
+            repos[selection]["copy"] = self.chk_copy.GetValue()
+            repos[selection]["reg"] = self.chk_reg.GetValue()
+            try:
+                save_config(self.config)
+            except Exception:
+                pass
+            self.refresh_list()
+            self.repo_listbox.SetSelection(selection)
 
     def on_browse(self, event):
         with wx.DirDialog(self, "Choose destination directory", style=wx.DD_DEFAULT_STYLE) as dlg:
@@ -173,6 +206,7 @@ class GitLibSyncDialog(wx.Dialog):
         repos.append({
             "url": url, 
             "dir": directory,
+            "sync": True, # 追加時はデフォルトでオン
             "copy": self.chk_copy.GetValue(),
             "reg": self.chk_reg.GetValue()
         })
@@ -203,12 +237,9 @@ class GitLibSyncDialog(wx.Dialog):
             wx.MessageBox("This repository URL is already registered in another entry.", "Duplicate Error", wx.ICON_WARNING)
             return
 
-        repos[selection] = {
-            "url": url, 
-            "dir": directory,
-            "copy": self.chk_copy.GetValue(),
-            "reg": self.chk_reg.GetValue()
-        }
+        repos[selection]["url"] = url
+        repos[selection]["dir"] = directory
+        
         try:
             save_config(self.config)
         except Exception as e:
@@ -240,20 +271,24 @@ class GitLibSyncDialog(wx.Dialog):
 
     def on_sync(self, event):
         repos = self.config.get("repositories", [])
-        if not repos:
-            wx.MessageBox("No repositories to sync.", "Info", wx.ICON_INFORMATION)
+        
+        # --- UIでチェック（☑）が入っているリポジトリだけを抽出 ---
+        target_repos = [repo for repo in repos if repo.get("sync", True)]
+        
+        if not target_repos:
+            wx.MessageBox("No repositories are checked for sync.", "Info", wx.ICON_INFORMATION)
             return
 
         project_dir = get_project_dir()
         
         results = []
         success_count = 0
-        total_repos = len(repos)
+        total_repos = len(target_repos)
 
         progress = wx.ProgressDialog("Syncing Repositories", "Starting sync...", maximum=total_repos, parent=self,
                                      style=wx.PD_APP_MODAL | wx.PD_AUTO_HIDE)
 
-        for i, repo in enumerate(repos):
+        for i, repo in enumerate(target_repos):
             url = repo.get("url")
             target_dir = os.path.expanduser(repo.get("dir"))
             do_copy = repo.get("copy", False)
