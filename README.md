@@ -50,8 +50,8 @@ python git_sync_gui.py
 
 1. リポジトリの登録
 画面下部の Git URL に、対象のライブラリリポジトリURLを入力する（例: https://github.com/example/kicad-libs.git）。
-Local Dir に、PC上でライブラリをキャッシュとして一時保存するディレクトリを指定する（Browseボタンから選択可能）。
-対象プロジェクトにデータを引き継ぎたい場合は、以下のオプションにチェックを入れる（リストを選択するだけで即座に保存される）。
+Local Dir に、PC上でライブラリを保存するディレクトリを指定する（Browseボタンから選択可能）。
+対象プロジェクトにデータを引き継ぎたい場合は、以下のオプションにチェックを入れる。
     * Copy to current project folder: 同期後、プロジェクトフォルダへコピーする。
     * Register to project library table: コピー後、プロジェクトのライブラリテーブルへ自動登録する。
 「Add New」 を押してリストに登録する。
