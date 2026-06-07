@@ -70,13 +70,10 @@ class GitLibSyncDialog(wx.Dialog):
             self.SetIcon(icon)
 
         self.config = load_config()
-        # 設定ファイルにローカル用のキーが無ければ初期化
         self.config.setdefault("local_libs", [])
 
-        # 全体のサイザー
         dialog_sizer = wx.BoxSizer(wx.VERTICAL)
         
-        # --- タブ (Notebook) の作成 ---
         self.notebook = wx.Notebook(self)
         self.git_panel = wx.Panel(self.notebook)
         self.local_panel = wx.Panel(self.notebook)
@@ -84,7 +81,6 @@ class GitLibSyncDialog(wx.Dialog):
         self.notebook.AddPage(self.git_panel, "🌐 Git Repositories Sync")
         self.notebook.AddPage(self.local_panel, "📁 Local Libraries Import")
 
-        # 各パネルの初期化
         self.init_git_panel()
         self.init_local_panel()
 
@@ -95,7 +91,7 @@ class GitLibSyncDialog(wx.Dialog):
         self.refresh_local_list()
 
     # ==========================================
-    # 1. Git Repositories Tab (既存機能そのまま)
+    # 1. Git Repositories Tab
     # ==========================================
     def init_git_panel(self):
         main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -331,13 +327,14 @@ class GitLibSyncDialog(wx.Dialog):
         summary = f"Completed: {success_count} / {len(target_repos)} targets synced successfully.\n\n" + "\n\n".join(results)
         wx.MessageBox(summary, "Result Summary", wx.ICON_INFORMATION)
 
+
     # ==========================================
-    # 2. Local Libraries Tab (新規追加機能)
+    # 2. Local Libraries Tab (拡張版)
     # ==========================================
     def init_local_panel(self):
         main_sizer = wx.BoxSizer(wx.VERTICAL)
 
-        list_label = wx.StaticText(self.local_panel, label="Registered Local Sources (☑: Target for Import to Project):")
+        list_label = wx.StaticText(self.local_panel, label="Registered Local Sources (☑: Target, [C]:Copy, [R]:Register):")
         main_sizer.Add(list_label, 0, wx.ALL, 5)
 
         self.local_listbox = wx.CheckListBox(self.local_panel, style=wx.LB_SINGLE)
@@ -365,6 +362,17 @@ class GitLibSyncDialog(wx.Dialog):
         input_sizer.Add(path_sizer, 1, wx.EXPAND)
         main_sizer.Add(input_sizer, 0, wx.EXPAND | wx.ALL, 5)
 
+        # --- 新規追加: LocalタブにもCとRのチェックボックスを設置 ---
+        opt_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.local_chk_copy = wx.CheckBox(self.local_panel, label="Copy to project [C]")
+        self.local_chk_reg = wx.CheckBox(self.local_panel, label="Register to table [R]")
+        self.local_chk_copy.Bind(wx.EVT_CHECKBOX, self.on_local_checkbox_toggle)
+        self.local_chk_reg.Bind(wx.EVT_CHECKBOX, self.on_local_checkbox_toggle)
+        
+        opt_sizer.Add(self.local_chk_copy, 0, wx.RIGHT, 15)
+        opt_sizer.Add(self.local_chk_reg, 0)
+        main_sizer.Add(opt_sizer, 0, wx.ALL, 5)
+
         manage_btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.local_add_btn = wx.Button(self.local_panel, label="Add New")
         self.local_update_btn = wx.Button(self.local_panel, label="Update Selected")
@@ -382,7 +390,7 @@ class GitLibSyncDialog(wx.Dialog):
         main_sizer.Add(wx.StaticLine(self.local_panel), 0, wx.EXPAND | wx.ALL, 5)
 
         action_btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.local_sync_btn = wx.Button(self.local_panel, label="Import Checked to Project (Copy & Register)")
+        self.local_sync_btn = wx.Button(self.local_panel, label="Process Checked Operations")
         self.local_close_btn = wx.Button(self.local_panel, label="Close")
         
         self.local_sync_btn.Bind(wx.EVT_BUTTON, self.on_local_sync)
@@ -397,7 +405,10 @@ class GitLibSyncDialog(wx.Dialog):
     def refresh_local_list(self):
         self.local_listbox.Clear()
         for i, lib in enumerate(self.config.get("local_libs", [])):
-            self.local_listbox.Append(lib.get("path", ""))
+            c_mark = "C" if lib.get("copy", False) else " "
+            r_mark = "R" if lib.get("reg", False) else " "
+            display_str = f"[{c_mark}][{r_mark}]  {lib.get('path', '')}"
+            self.local_listbox.Append(display_str)
             self.local_listbox.Check(i, lib.get("sync", True))
 
     def on_local_list_select(self, event):
@@ -405,6 +416,8 @@ class GitLibSyncDialog(wx.Dialog):
         if selection != wx.NOT_FOUND:
             lib = self.config.get("local_libs", [])[selection]
             self.local_path_input.SetValue(lib.get("path", ""))
+            self.local_chk_copy.SetValue(lib.get("copy", False))
+            self.local_chk_reg.SetValue(lib.get("reg", False))
 
     def on_local_list_check(self, event):
         index = event.GetInt()
@@ -413,6 +426,17 @@ class GitLibSyncDialog(wx.Dialog):
             libs[index]["sync"] = self.local_listbox.IsChecked(index)
             try: save_config(self.config)
             except Exception: pass
+
+    def on_local_checkbox_toggle(self, event):
+        selection = self.local_listbox.GetSelection()
+        if selection != wx.NOT_FOUND:
+            libs = self.config.get("local_libs", [])
+            libs[selection]["copy"] = self.local_chk_copy.GetValue()
+            libs[selection]["reg"] = self.local_chk_reg.GetValue()
+            try: save_config(self.config)
+            except Exception: pass
+            self.refresh_local_list()
+            self.local_listbox.SetSelection(selection)
 
     def on_local_browse_file(self, event):
         with wx.FileDialog(self, "Choose KiCad Symbol file", wildcard="KiCad Symbol (*.kicad_sym)|*.kicad_sym|All files (*.*)|*.*", style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as dlg:
@@ -433,7 +457,12 @@ class GitLibSyncDialog(wx.Dialog):
         if any(l['path'] == path for l in libs):
             wx.MessageBox("This path is already registered.", "Duplicate", wx.ICON_WARNING)
             return
-        libs.append({"path": path, "sync": True})
+        libs.append({
+            "path": path, 
+            "sync": True,
+            "copy": self.local_chk_copy.GetValue(),
+            "reg": self.local_chk_reg.GetValue()
+        })
         try: save_config(self.config)
         except Exception: pass
         self.refresh_local_list()
@@ -465,7 +494,7 @@ class GitLibSyncDialog(wx.Dialog):
         target_libs = [lib for lib in libs if lib.get("sync", True)]
         
         if not target_libs:
-            wx.MessageBox("No local libraries are checked for import.", "Info", wx.ICON_INFORMATION)
+            wx.MessageBox("No local libraries are checked for import/registration.", "Info", wx.ICON_INFORMATION)
             return
 
         project_dir = get_project_dir()
@@ -475,70 +504,109 @@ class GitLibSyncDialog(wx.Dialog):
 
         results = []
         success_count = 0
-        progress = wx.ProgressDialog("Importing Libraries", "Starting import...", maximum=len(target_libs), parent=self, style=wx.PD_APP_MODAL | wx.PD_AUTO_HIDE)
+        progress = wx.ProgressDialog("Processing Libraries", "Starting...", maximum=len(target_libs), parent=self, style=wx.PD_APP_MODAL | wx.PD_AUTO_HIDE)
 
         for i, lib in enumerate(target_libs):
             src_path = os.path.expanduser(lib.get("path")).replace('\\', '/')
-            progress.Update(i, f"Importing: {src_path}")
+            do_copy = lib.get("copy", False)
+            do_reg = lib.get("reg", False)
             
+            progress.Update(i, f"Processing: {src_path}")
+            
+            if not do_copy and not do_reg:
+                results.append(f"[SKIP] No action (C/R) selected for: {src_path}")
+                continue
+                
             if not os.path.exists(src_path):
                 results.append(f"[FAIL] Path not found: {src_path}")
                 continue
 
-            # プロジェクト内に取り込み用の専用フォルダを作成
-            target_dir = os.path.join(project_dir, "local_imported_libs")
-            os.makedirs(target_dir, exist_ok=True)
-            
             sym_table = os.path.join(project_dir, "sym-lib-table")
             fp_table = os.path.join(project_dir, "fp-lib-table")
             reg_logs = []
-
+            
+            scan_dir = src_path
+            use_kiprjmod = False
+            
             try:
-                if os.path.isfile(src_path):
-                    # 単一ファイル（.kicad_symなど）のコピー
-                    shutil.copy2(src_path, target_dir)
-                    filename = os.path.basename(src_path)
-                    if filename.endswith(".kicad_sym"):
-                        lib_name = os.path.splitext(filename)[0]
-                        uri = f"${{KIPRJMOD}}/local_imported_libs/{filename}"
-                        reg_logs.append("  -> " + register_to_project_table(sym_table, lib_name, uri, is_fp=False))
-                else:
-                    # フォルダのコピー（SamacSysなどで解凍したフォルダごと）
-                    basename = os.path.basename(src_path.rstrip('/')) or "lib_folder"
-                    dest_folder = os.path.join(target_dir, basename)
-                    shutil.copytree(src_path, dest_folder, dirs_exist_ok=True)
+                # --- コピー処理 ---
+                if do_copy:
+                    target_dir = os.path.join(project_dir, "local_imported_libs")
+                    os.makedirs(target_dir, exist_ok=True)
                     
-                    # コピー先フォルダをスキャンして登録
-                    for root, dirs, files in os.walk(dest_folder):
-                        for file in files:
-                            if file.endswith(".kicad_sym"):
-                                lib_name = os.path.splitext(file)[0]
-                                full_path = os.path.join(root, file).replace("\\", "/")
-                                rel_path = os.path.relpath(full_path, project_dir).replace("\\", "/")
-                                uri = f"${{KIPRJMOD}}/{rel_path}"
-                                reg_logs.append("  -> " + register_to_project_table(sym_table, lib_name, uri, is_fp=False))
-                        for d in dirs:
-                            if d.endswith(".pretty"):
-                                lib_name = os.path.splitext(d)[0]
-                                full_path = os.path.join(root, d).replace("\\", "/")
-                                rel_path = os.path.relpath(full_path, project_dir).replace("\\", "/")
-                                uri = f"${{KIPRJMOD}}/{rel_path}"
-                                reg_logs.append("  -> " + register_to_project_table(fp_table, lib_name, uri, is_fp=True))
-                
+                    if os.path.isfile(src_path):
+                        shutil.copy2(src_path, target_dir)
+                        scan_dir = os.path.join(target_dir, os.path.basename(src_path)).replace('\\', '/')
+                    else:
+                        basename = os.path.basename(src_path.rstrip('/')) or "lib_folder"
+                        dest_folder = os.path.join(target_dir, basename).replace('\\', '/')
+                        shutil.copytree(src_path, dest_folder, dirs_exist_ok=True)
+                        scan_dir = dest_folder
+                    use_kiprjmod = True
+
+                # --- 登録処理 ---
+                if do_reg:
+                    # 1. 単一のシンボルファイルが指定された場合
+                    if os.path.isfile(scan_dir) and scan_dir.endswith(".kicad_sym"):
+                        lib_name = os.path.splitext(os.path.basename(scan_dir))[0]
+                        if use_kiprjmod:
+                            rel_path = os.path.relpath(scan_dir, project_dir).replace("\\", "/")
+                            uri = f"${{KIPRJMOD}}/{rel_path}"
+                        else:
+                            uri = scan_dir  # コピーしない場合は絶対パスを直接登録
+                        reg_logs.append("  -> " + register_to_project_table(sym_table, lib_name, uri, is_fp=False))
+                    
+                    # 2. .prettyフォルダ自体が指定された場合
+                    elif os.path.isdir(scan_dir) and scan_dir.endswith(".pretty"):
+                        lib_name = os.path.splitext(os.path.basename(scan_dir))[0]
+                        if use_kiprjmod:
+                            rel_path = os.path.relpath(scan_dir, project_dir).replace("\\", "/")
+                            uri = f"${{KIPRJMOD}}/{rel_path}"
+                        else:
+                            uri = scan_dir
+                        reg_logs.append("  -> " + register_to_project_table(fp_table, lib_name, uri, is_fp=True))
+                    
+                    # 3. 複数のライブラリを含む大元のフォルダが指定された場合
+                    elif os.path.isdir(scan_dir):
+                        for root, dirs, files in os.walk(scan_dir):
+                            for file in files:
+                                if file.endswith(".kicad_sym"):
+                                    lib_name = os.path.splitext(file)[0]
+                                    full_path = os.path.join(root, file).replace("\\", "/")
+                                    if use_kiprjmod:
+                                        rel_path = os.path.relpath(full_path, project_dir).replace("\\", "/")
+                                        uri = f"${{KIPRJMOD}}/{rel_path}"
+                                    else:
+                                        uri = full_path
+                                    reg_logs.append("  -> " + register_to_project_table(sym_table, lib_name, uri, is_fp=False))
+                            for d in dirs:
+                                if d.endswith(".pretty"):
+                                    lib_name = os.path.splitext(d)[0]
+                                    full_path = os.path.join(root, d).replace("\\", "/")
+                                    if use_kiprjmod:
+                                        rel_path = os.path.relpath(full_path, project_dir).replace("\\", "/")
+                                        uri = f"${{KIPRJMOD}}/{rel_path}"
+                                    else:
+                                        uri = full_path
+                                    reg_logs.append("  -> " + register_to_project_table(fp_table, lib_name, uri, is_fp=True))
+
                 success_count += 1
-                log_msgs = [f"[OK] Imported: {src_path}"]
+                log_msgs = [f"[OK] Processed: {src_path}"]
+                if do_copy:
+                    log_msgs.append(f"  -> Copied to local_imported_libs")
                 if reg_logs:
                     log_msgs.extend(reg_logs)
-                else:
+                elif do_reg:
                     log_msgs.append("  -> [SKIP] No .kicad_sym or .pretty found to register.")
+                
                 results.append("\n".join(log_msgs))
                 
             except Exception as e:
                 results.append(f"[FAIL] Error processing {src_path}:\n  {e}")
 
         progress.Destroy()
-        summary = f"Completed: {success_count} / {len(target_libs)} sources imported successfully.\n\n" + "\n\n".join(results)
-        wx.MessageBox(summary, "Import Summary", wx.ICON_INFORMATION)
+        summary = f"Completed: {success_count} / {len(target_libs)} sources processed successfully.\n\n" + "\n\n".join(results)
+        wx.MessageBox(summary, "Processing Summary", wx.ICON_INFORMATION)
 
     # ==========================================
     # 共通関数
