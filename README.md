@@ -7,8 +7,8 @@ KiCadのシンボルおよびフットプリントライブラリをGitリポジ
 ## 内容
 
 ### 【Git Repositories Sync（Git連携機能）】  
-GUIベースの管理: KiCadのPCBエディタ上から、ダイアログでGitリポジトリ（URLとローカル保存先）の登録・更新・削除が可能。
-Git同期: 登録された全リポジトリに対し、ローカルに存在しなければ git clone、存在すれば git pull を自動で判別して一括実行。
+* GUIベースの管理: KiCadのPCBエディタ上から、ダイアログでGitリポジトリ（URLとローカル保存先）の登録・更新・削除が可能。
+* Git同期: 登録された全リポジトリに対し、ローカルに存在しなければ git clone、存在すれば git pull を自動で判別して一括実行。
 
 
 ### 【Local Libraries Import（ローカルライブラリ取り込み機能）】  
