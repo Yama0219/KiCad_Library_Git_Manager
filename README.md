@@ -2,20 +2,21 @@
 
 KiCadのシンボルおよびフットプリントライブラリをGitリポジトリ経由で管理する機能に加え、外部ツールでダウンロードしたローカルライブラリのプロジェクト取り込み・登録をワンクリックで行うためのKiCadアクションプラグイン。
 
-## 内容
-タブによる機能切り替え:
-GUI上部のタブで「Git Repositories Sync」と「Local Libraries Import」を切り替えて操作。
+![alt text](image.png)
 
-【Git Repositories Sync（Git連携機能）】  
+## 内容
+
+### 【Git Repositories Sync（Git連携機能）】  
 GUIベースの管理: KiCadのPCBエディタ上から、ダイアログでGitリポジトリ（URLとローカル保存先）の登録・更新・削除が可能。
 Git同期: 登録された全リポジトリに対し、ローカルに存在しなければ git clone、存在すれば git pull を自動で判別して一括実行。
-[S] Sync Target: 同期対象とするリポジトリをリストのチェックボックスで個別にオン/オフ可能。
 
-【Local Libraries Import（ローカルライブラリ取り込み機能）】  
-手軽なローカル管理: SamacSysやUltraLibrarianなどから取得したシンボル（.kicad_sym）やフットプリントフォルダ（.pretty）のパスを登録。
 
-【プロジェクト・ローカル管理への登録（共通）】  
-[C] Copy: 同期・指定したライブラリを、現在開いているKiCadプロジェクト内の local_git_libs/ または local_imported_libs/ フォルダへ自動コピー（Git連携時は容量削減のため .git 履歴データは除外）。
+### 【Local Libraries Import（ローカルライブラリ取り込み機能）】  
+SamacSysやUltraLibrarianなどから取得したシンボル（.kicad_sym）やフットプリントフォルダ（.pretty）のパスを登録。
+
+### 【プロジェクト・ローカル管理への登録（共通）】  
+[x] Sync Target: 同期対象とするか否かを選択。
+[C] Copy: 同期・指定したライブラリを、現在開いているKiCadプロジェクト内の local_git_libs/ または local_imported_libs/ フォルダへ自動コピー（
 [R] Register: コピーされたライブラリをスキャンし、プロジェクト固有のライブラリテーブル（sym-lib-table, fp-lib-table）へ環境変数 ${KIPRJMOD} を用いた相対パスで自動登録。
 
 ## インストール方法 (Installation)
@@ -59,10 +60,13 @@ python git_sync_gui.py
 5. 「Sync All Checked Operations」ボタンを押すと、チェックされた項目の Clone/Pull、コピー、自動登録が一括実行される。
 
 ### 3. ローカルライブラリの登録と取り込み (Local Libraries Import タブ)
-1. Source Path に、取り込みたいファイル（.kicad_sym）またはフォルダ（.pretty等を含む解凍済みフォルダ）を指定する（Browse File / Browse Folderボタンを利用可能）。
-2. 「Add New」を押してリストに登録する。
-3. 取り込みたい項目の ☑ にチェックを入れる。
-4. 「Import Checked to Project (Copy & Register)」ボタンを押すと、プロジェクト内の local_imported_libs/ フォルダへ実データがコピーされ、ライブラリテーブルへ即座に自動登録される。
+1. Source Path に、取り込みたいファイル（.kicad_sym）またはフォルダ（.pretty等を含む解凍済みフォルダ）を指定する。
+2. プロジェクトへの反映方法に合わせて、以下のオプションにチェックを入れる。
+    * Copy to project [C]: プロジェクト内の local_imported_libs/ フォルダへ実データをコピーする。
+    * Register to table [R]: ライブラリテーブルへ自動登録する（[C]のチェックを外して[R]のみ有効にした場合、指定した元の絶対パスを直接登録する）。
+3. 「Add New」を押してリストに登録する。
+4. 処理対象とする項目の ☑ にチェックが入っていることを確認する。
+5. 「Process Checked Operations」ボタンを押すと、チェックされた項目に対し、指定したコピーおよび自動登録処理が一括実行される。
 
 ### 4. リストの編集・削除
 リストから項目を選択すると、下のテキストボックスにURLやパスが展開される。
