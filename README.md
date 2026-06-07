@@ -15,9 +15,9 @@ Git同期: 登録された全リポジトリに対し、ローカルに存在し
 SamacSysやUltraLibrarianなどから取得したシンボル（.kicad_sym）やフットプリントフォルダ（.pretty）のパスを登録。
 
 ### 【プロジェクト・ローカル管理への登録（共通）】  
-[x] Sync Target: 同期対象とするか否かを選択。
-[C] Copy: 同期・指定したライブラリを、現在開いているKiCadプロジェクト内の local_git_libs/ または local_imported_libs/ フォルダへ自動コピー（
-[R] Register: コピーされたライブラリをスキャンし、プロジェクト固有のライブラリテーブル（sym-lib-table, fp-lib-table）へ環境変数 ${KIPRJMOD} を用いた相対パスで自動登録。
+* [☑] Sync Target: 同期対象とするか否かを選択。
+* [C] Copy: 同期・指定したライブラリを、現在開いているKiCadプロジェクト内のlocal_git_libs/ または local_imported_libs/ フォルダへ自動コピー。
+* [R] Register: コピーされたライブラリをスキャンし、プロジェクト固有のライブラリテーブル（sym-lib-table, fp-lib-table）へ環境変数 ${KIPRJMOD} を用いた相対パスで自動登録。
 
 ## インストール方法 (Installation)
 ### 前提条件
@@ -25,7 +25,7 @@ SamacSysやUltraLibrarianなどから取得したシンボル（.kicad_sym）や
 * OSに Git がインストールされており、コマンドラインから git コマンドが実行可能であること。
 
 ### 導入手順
-本ツールのフォルダ（例: git_lib_sync/）を、KiCadのグローバルプラグインディレクトリに配置する。
+本ツールのファイルを、KiCadのグローバルプラグインディレクトリに配置する。
 
 | OS | Directory |
 |----|----|
@@ -38,8 +38,6 @@ SamacSysやUltraLibrarianなどから取得したシンボル（.kicad_sym）や
 plugins/  
     ├─ git_sync_gui.py  
     └─ icon.png  
-
-(※ 設定データは安全のため、プラグインフォルダ内ではなくユーザーのホームディレクトリ ~/.kicad_lib_sync.json に保存される。)
 
 ## 使い方 (Usage)
 ### 1. プラグインの起動
